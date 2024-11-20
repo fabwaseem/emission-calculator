@@ -32,6 +32,14 @@ interface Airport {
 interface EmissionResults {
   perPerson: number;
   total: number;
+  roundTrip: number;
+}
+
+interface FlightDetails {
+  passengers: number;
+  isRoundTrip: boolean;
+  cabinClass: 'economy' | 'premium' | 'business' | 'first';
+  aircraftType: 'regional' | 'narrowBody' | 'wideBody';
 }
 
 interface CalculationResults {
@@ -39,6 +47,7 @@ interface CalculationResults {
   emissions: EmissionResults;
   departure: Airport;
   arrival: Airport;
+  flightDetails: FlightDetails;
 }
 
 interface DropdownState {
@@ -214,6 +223,88 @@ const AirportSearchInput: React.FC<{
   </div>
 );
 
+const FlightDetailsForm: React.FC<{
+  flightDetails: FlightDetails;
+  onChange: (details: FlightDetails) => void;
+}> = ({ flightDetails, onChange }) => {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Number of Passengers</label>
+        <input
+          type="number"
+          min="1"
+          max="1000"
+          value={flightDetails.passengers}
+          onChange={(e) =>
+            onChange({ ...flightDetails, passengers: parseInt(e.target.value) || 1 })
+          }
+          className="w-full p-2 border rounded-md mt-1"
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Trip Type</label>
+        <div className="flex gap-4 mt-1">
+          <label className="flex items-center space-x-2">
+            <input
+              type="radio"
+              checked={!flightDetails.isRoundTrip}
+              onChange={() => onChange({ ...flightDetails, isRoundTrip: false })}
+            />
+            <span>One Way</span>
+          </label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="radio"
+              checked={flightDetails.isRoundTrip}
+              onChange={() => onChange({ ...flightDetails, isRoundTrip: true })}
+            />
+            <span>Round Trip</span>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Cabin Class</label>
+        <select
+          value={flightDetails.cabinClass}
+          onChange={(e) =>
+            onChange({
+              ...flightDetails,
+              cabinClass: e.target.value as FlightDetails['cabinClass'],
+            })
+          }
+          className="w-full p-2 border rounded-md mt-1"
+        >
+          <option value="economy">Economy</option>
+          <option value="premium">Premium Economy</option>
+          <option value="business">Business</option>
+          <option value="first">First Class</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Aircraft Type</label>
+        <select
+          value={flightDetails.aircraftType}
+          onChange={(e) =>
+            onChange({
+              ...flightDetails,
+              aircraftType: e.target.value as FlightDetails['aircraftType'],
+            })
+          }
+          className="w-full p-2 border rounded-md mt-1"
+        >
+          <option value="regional">Regional Jet</option>
+          <option value="narrowBody">Narrow Body</option>
+          <option value="wideBody">Wide Body</option>
+        </select>
+      </div>
+    </div>
+  );
+};
+
 const CO2Calculator: React.FC = () => {
   const [airports, setAirports] = useState<Airport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -237,6 +328,13 @@ const CO2Calculator: React.FC = () => {
   const [calculating, setCalculating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<CalculationResults | null>(null);
+
+  const [flightDetails, setFlightDetails] = useState<FlightDetails>({
+    passengers: 1,
+    isRoundTrip: false,
+    cabinClass: 'economy',
+    aircraftType: 'narrowBody',
+  });
 
   const departureRef = useRef<HTMLInputElement>(null);
   const arrivalRef = useRef<HTMLInputElement>(null);
@@ -443,19 +541,41 @@ const CO2Calculator: React.FC = () => {
     return R * c;
   };
 
-  const calculateEmissions = (distance: number): EmissionResults => {
-    let emissionFactor: number;
-    if (distance < 500) {
-      emissionFactor = 0.14;
-    } else if (distance < 3000) {
-      emissionFactor = 0.12;
-    } else {
-      emissionFactor = 0.11;
-    }
+  const calculateEmissions = (distance: number, flightDetails: FlightDetails): EmissionResults => {
+    // Base emission factors (kg CO2 per km)
+    const baseEmissionFactors = {
+      regional: 0.14,
+      narrowBody: 0.12,
+      wideBody: 0.11,
+    };
+
+    // Cabin class multipliers
+    const cabinClassMultipliers = {
+      economy: 1,
+      premium: 1.5,
+      business: 2.5,
+      first: 4,
+    };
+
+    // Get base emission factor based on aircraft type and distance
+    let emissionFactor = baseEmissionFactors[flightDetails.aircraftType];
+
+    // Apply cabin class multiplier
+    emissionFactor *= cabinClassMultipliers[flightDetails.cabinClass];
+
+    // Calculate per person emissions
+    const perPerson = distance * emissionFactor;
+
+    // Calculate total emissions for all passengers
+    const total = perPerson * flightDetails.passengers;
+
+    // Calculate round trip emissions if applicable
+    const roundTrip = flightDetails.isRoundTrip ? total * 2 : total;
 
     return {
-      perPerson: distance * emissionFactor,
-      total: distance * emissionFactor * 200,
+      perPerson,
+      total,
+      roundTrip,
     };
   };
 
@@ -478,13 +598,14 @@ const CO2Calculator: React.FC = () => {
         selectedArrival._geoloc.lng
       );
 
-      const emissionResults = calculateEmissions(dist);
+      const emissionResults = calculateEmissions(dist, flightDetails);
 
       setResults({
         distance: dist,
         emissions: emissionResults,
         departure: selectedDeparture,
         arrival: selectedArrival,
+        flightDetails,
       });
     } catch (error) {
       setError("Error calculating emissions");
@@ -653,6 +774,11 @@ const CO2Calculator: React.FC = () => {
             onRecentRemove={removeRecentSearch}
           />
 
+          <FlightDetailsForm
+            flightDetails={flightDetails}
+            onChange={(details) => setFlightDetails(details)}
+          />
+
           <button
             onClick={handleCalculate}
             disabled={calculating || !selectedDeparture || !selectedArrival}
@@ -681,50 +807,39 @@ const CO2Calculator: React.FC = () => {
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">From</p>
-                  <p className="font-semibold">{results.departure.name}</p>
+                  <p className="text-sm text-gray-500">Flight Details</p>
+                  <p className="font-semibold">
+                    {results.flightDetails.passengers} passenger(s),{' '}
+                    {results.flightDetails.isRoundTrip ? 'Round Trip' : 'One Way'}
+                  </p>
                   <p className="text-sm text-gray-500">
-                    {results.departure.city}, {results.departure.country}
+                    {results.flightDetails.cabinClass.charAt(0).toUpperCase() +
+                      results.flightDetails.cabinClass.slice(1)}{' '}
+                    Class
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">To</p>
-                  <p className="font-semibold">{results.arrival.name}</p>
+                  <p className="text-sm text-gray-500">Distance</p>
+                  <p className="font-semibold">{formatNumber(results.distance, 0)} km</p>
                   <p className="text-sm text-gray-500">
-                    {results.arrival.city}, {results.arrival.country}
+                    {results.flightDetails.isRoundTrip
+                      ? `${formatNumber(results.distance * 2, 0)} km round trip`
+                      : 'one way'}
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Flight Distance</p>
-                  <p className="text-lg font-semibold">
-                    {formatNumber(results.distance, 0)} km
-                  </p>
-                </div>
-                <div>
                   <p className="text-sm text-gray-500">CO2 Per Passenger</p>
-                  <p className="text-lg font-semibold">
+                  <p className="font-semibold">
                     {formatNumber(results.emissions.perPerson)} kg
                   </p>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">
-                    Total Flight Emissions
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {formatNumber(results.emissions.total / 1000)} tonnes
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Equivalent to</p>
-                  <p className="text-lg font-semibold">
-                    {formatNumber(results.emissions.total / 2400)} years of
-                    driving
+                  <p className="text-sm text-gray-500">Total CO2 Emissions</p>
+                  <p className="font-semibold">
+                    {formatNumber(results.emissions.roundTrip / 1000, 2)} tonnes
                   </p>
                 </div>
               </div>
