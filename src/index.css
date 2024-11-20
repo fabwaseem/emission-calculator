@@ -22,7 +22,7 @@
     --border: 216 34% 17%;
     --input: 216 34% 17%;
     --ring: 216 34% 17%;
-    --radius: 0.5rem
+    --radius: 1rem
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -56,6 +56,6 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground flex items-center justify-center min-h-screen
+    @apply bg-background text-foreground;
   }
 }
