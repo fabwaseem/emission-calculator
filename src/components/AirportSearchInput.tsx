@@ -59,8 +59,6 @@ const AirportSearchInput: React.FC<AirportSearchInputProps> = ({
   const MAX_RECENT_SEARCHES = 5;
 
   const [airports, setAirports] = useState<Airport[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dataError, setDataError] = useState<string | null>(null);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [dropdown, setDropdown] = useState<DropdownState>({
     show: false,
@@ -203,7 +201,6 @@ const AirportSearchInput: React.FC<AirportSearchInputProps> = ({
         const cachedData = loadFromCache();
         if (cachedData) {
           setAirports(cachedData);
-          setIsLoading(false);
           return;
         }
 
@@ -216,9 +213,7 @@ const AirportSearchInput: React.FC<AirportSearchInputProps> = ({
         setAirports(data);
         saveToCache(data);
       } catch (err) {
-        setDataError("Failed to load airports data. Please try again later.");
-      } finally {
-        setIsLoading(false);
+        console.log(err);
       }
     };
 
@@ -248,8 +243,8 @@ const AirportSearchInput: React.FC<AirportSearchInputProps> = ({
     onSelect: (airport: Airport) => void,
     setDropdown: React.Dispatch<React.SetStateAction<DropdownState>>
   ) => {
-    console.log("Selecting airport:", airport);
     onSelect(airport);
+    saveRecentSearch(airport);
     // Delay closing the dropdown slightly to ensure the click event completes
     setTimeout(() => {
       setDropdown({ show: false, selectedIndex: -1 });

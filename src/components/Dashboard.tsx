@@ -1,24 +1,6 @@
- import React from "react";
- import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
- import { Plane, Users, ArrowUpRight, TrendingUp, Globe2, Search, Bell, Settings } from "lucide-react";
+ import { Bell, Globe2, Plane, Search, Settings, TrendingUp, Users } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
- const StatCard: React.FC<{
-   title: string;
-   value: string;
-   description: string;
-   icon: React.ReactNode;
- }> = ({ title, value, description, icon }) => (
-   <Card>
-     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-       <CardTitle className="text-sm font-medium">{title}</CardTitle>
-       {icon}
-     </CardHeader>
-     <CardContent>
-       <div className="text-2xl font-bold">{value}</div>
-       <p className="text-xs text-muted-foreground">{description}</p>
-     </CardContent>
-   </Card>
- );
 
 const Dashboard = () => {
   const savedFlights = JSON.parse(localStorage.getItem("saved_flights") || "[]");

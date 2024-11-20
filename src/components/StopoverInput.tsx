@@ -1,8 +1,7 @@
-import React, { useState, useRef, useCallback, useMemo } from "react";
-import { Airport, FlightRoute, RecentSearch } from "../../types";
 import { X } from "lucide-react";
+import React, { useState } from "react";
+import { Airport } from "../../types";
 import AirportSearchInput from "./AirportSearchInput";
-import Fuse from "fuse.js";
 
 interface StopoverInputProps {
   index: number;
